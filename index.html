@@ -19,7 +19,7 @@ video{position:absolute;right:.8rem;bottom:.8rem;width:180px;height:102px;object
 .brand{flex:1 1 100%;display:flex;gap:.7rem;align-items:center}.brand img{width:42px;height:42px;border-radius:.6rem;border:1px solid rgba(255,255,255,.2)}
 .eyebrow{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}h1{margin:.1rem 0;font-size:1.5rem;font-family:var(--font-display)}.meta{margin:0;color:var(--muted);font-size:.86rem}
 .hud{display:grid;grid-template-columns:repeat(6,minmax(64px,1fr));gap:.4rem;min-width:min(100%,760px)}.stat{min-height:58px;padding:.35rem;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:.6rem;text-align:center;display:flex;flex-direction:column;justify-content:center}
-.label{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.value{font-size:1rem;font-weight:700;white-space:nowrap;min-height:1.2em;font-variant-numeric:tabular-nums}
+.label{font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}.value{font-size:1rem;font-weight:700;white-space:nowrap;min-height:1.2em;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis}
 .actions{display:flex;gap:.4rem;flex-wrap:wrap;justify-content:flex-end}
 button{min-height:42px;padding:.55rem .95rem;border-radius:999px;border:1px solid var(--line);background:var(--surface2);color:var(--text);font:inherit;cursor:pointer}
 button:hover{background:rgba(123,194,255,.16)}.primary{background:var(--primary);color:#04101f;border-color:transparent}
@@ -28,9 +28,9 @@ button:hover{background:rgba(123,194,255,.16)}.primary{background:var(--primary)
 .modePicker{position:absolute;inset:0;z-index:7;background:rgba(2,8,16,.72);display:flex;align-items:center;justify-content:center;padding:1rem}
 .modeCard{width:min(94vw,560px);background:rgba(8,16,30,.9);border:1px solid var(--line);border-radius:.8rem;padding:1rem;text-align:center}
 .modeButtons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;margin-top:.7rem}
-.touchControls{position:absolute;left:.8rem;bottom:.8rem;display:flex;gap:.5rem;z-index:5;pointer-events:auto}
+.touchControls{position:absolute;left:.8rem;bottom:calc(5.3rem + env(safe-area-inset-bottom));display:flex;gap:.5rem;z-index:5;pointer-events:auto}
 .touchControls button{width:62px;height:62px;padding:0;border-radius:50%;font-weight:700}
-@media(max-width:760px){.hud{grid-template-columns:repeat(3,minmax(0,1fr))}.actions{justify-content:stretch}.actions button{flex:1 1 calc(50% - .3rem)}.touchControls{left:.6rem;bottom:5.3rem}.modeButtons{grid-template-columns:1fr}}
+@media(max-width:760px){.hud{grid-template-columns:repeat(3,minmax(0,1fr))}.actions{justify-content:stretch}.actions button{flex:1 1 calc(50% - .3rem)}.touchControls{left:.6rem}.modeButtons{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -57,7 +57,7 @@ button:hover{background:rgba(123,194,255,.16)}.primary{background:var(--primary)
     </section>
   </div>
   <div class="row">
-    <section class="panel actions">
+    <section class="panel actions" id="actionPanel">
       <button id="restartBtn" class="primary" type="button">Restart</button>
       <button id="fullscreenBtn" type="button">Fullscreen</button>
       <button id="homeBtn" type="button">Home</button>
@@ -89,6 +89,7 @@ const scoreEl=document.getElementById('score'),coinsEl=document.getElementById('
 const messageEl=document.getElementById('message'),modePicker=document.getElementById('modePicker');
 const restartBtn=document.getElementById('restartBtn'),fullscreenBtn=document.getElementById('fullscreenBtn'),homeBtn=document.getElementById('homeBtn');
 const standardModeBtn=document.getElementById('standardModeBtn'),fingerModeBtn=document.getElementById('fingerModeBtn');
+const actionPanel=document.getElementById('actionPanel');
 const touchControls=document.getElementById('touchControls'),leftBtn=document.getElementById('leftBtn'),rightBtn=document.getElementById('rightBtn'),jumpBtn=document.getElementById('jumpBtn');
 
 let cw=0,ch=0,lastTime=0,controlMode=null,handVisible=false,hands=null,camera=null,fingerX=0,fingerY=0,fingerPrevY=0,lastFingerJump=0;
@@ -138,12 +139,24 @@ function resetGame(){
 }
 
 function updateHud(){
-  scoreEl.textContent=String(score);
+  scoreEl.textContent=String(Math.floor(score));
   coinsEl.textContent=String(coins);
   livesEl.textContent=String(lives);
   levelEl.textContent=String(level);
   statusEl.textContent=gameOver?'Game Over':flag.reached?'Cleared':started?(controlMode==='laptop'?(handVisible?'Tracking':'Searching'):'Running'):'Ready';
   modeEl.textContent=controlMode==='laptop'?'Finger Tracking':controlMode==='standard'?'Standard':'None';
+}
+
+function updateTouchControlsLayout(){
+  if(controlMode!=='standard'){return;}
+  const isCompact=innerWidth<=760;
+  if(!isCompact){
+    touchControls.style.bottom='calc(5.3rem + env(safe-area-inset-bottom))';
+    return;
+  }
+  const rect=actionPanel.getBoundingClientRect();
+  const bottomOffset=Math.max(18,Math.ceil(innerHeight-rect.top+12));
+  touchControls.style.bottom=`calc(${bottomOffset}px + env(safe-area-inset-bottom))`;
 }
 
 function showMessage(t,x){messageEl.hidden=false;messageEl.innerHTML='<h2>'+t+'</h2><p>'+x+'</p>';}
@@ -342,6 +355,7 @@ async function switchMode(mode){
     vid.style.display='none';
     handVisible=false;
   }
+  updateTouchControlsLayout();
   resetGame();
 }
 
@@ -370,7 +384,7 @@ fingerModeBtn.addEventListener('click',()=>switchMode('laptop'));
 restartBtn.addEventListener('click',resetGame);
 fullscreenBtn.addEventListener('click',()=>{if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});else document.exitFullscreen().catch(()=>{});});
 homeBtn.addEventListener('click',()=>{location.href='index.html';});
-addEventListener('resize',()=>{resize();buildLevel();});
+addEventListener('resize',()=>{resize();buildLevel();updateTouchControlsLayout();});
 
 resize();buildLevel();touchControls.style.display='none';updateHud();requestAnimationFrame(tick);
 </script>
